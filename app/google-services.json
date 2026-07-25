@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "266004089915",
+    "project_id": "alphamusic-e80b6",
+    "storage_bucket": "alphamusic-e80b6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:266004089915:android:0395e2abf7adad3db5e01e",
+        "android_client_info": {
+          "package_name": "com.example.alphamusic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIj5uNDA0S2_dpzXUJ7cV2NxqF208ciQc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Greek lowercase alpha (α) drawn cleanly in white for a monochrome theme -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 C40,20 28,32 28,48 C28,64 40,76 54,76 C60,76 65.5,73.5 69.5,69.5 L74,76 L80,76 L80,48 C80,32 68,20 54,20 Z M54,66 C44.1,66 36,57.9 36,48 C36,38.1 44.1,30 54,30 C63.9,30 72,38.1 72,48 L72,55 C67.5,61.5 61,66 54,66 Z" />
+</vector>
