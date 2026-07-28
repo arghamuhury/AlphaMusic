@@ -9,12 +9,14 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
@@ -71,6 +73,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,6 +108,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 
 // Removed local DownloadState enum — using core.data.DownloadState
 
@@ -120,10 +129,13 @@ fun PlayerScreen(
     onLikeToggle: (Boolean) -> Unit,
     onDownloadToggle: (Boolean) -> Unit,
     onAddToPlaylist: (String, Track) -> Unit,
+    onCreateNewPlaylist: (String) -> Unit,
     isLiked: Boolean,
     isDownloaded: Boolean,
     downloadStates: Map<String, DownloadState>,
     playlists: List<com.example.alphamusic.core.data.local.PlaylistEntity>,
+    lyrics: List<com.example.alphamusic.core.data.LyricLine>,
+    isLyricsLoading: Boolean,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -134,6 +146,8 @@ fun PlayerScreen(
 
     var isOptionsSheetVisible by remember { mutableStateOf(false) }
     var isPlaylistSheetVisible by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
+    var artScale by remember { mutableStateOf(1f) }
 
     val downloadState = downloadStates[track.id] ?: (if (isDownloaded) DownloadState.Downloaded else DownloadState.Idle)
 
@@ -149,7 +163,7 @@ fun PlayerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.background)
             .pointerInput(Unit) { detectTapGestures { } }
     ) {
         // Layer 3: Main Content
@@ -158,6 +172,7 @@ fun PlayerScreen(
                 .fillMaxSize()
                 .systemBarsPadding()
                 .padding(horizontal = 24.dp)
+                .then(if (showLyrics) Modifier.blur(radius = 14.dp) else Modifier)
         ) {
             BackHandler { onClose() }
             
@@ -173,22 +188,22 @@ fun PlayerScreen(
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
                         contentDescription = "Close",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(28.dp)
                     )
                 }
-                
+
                 Text(
                     text = "Now Playing",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
 
                 IconButton(onClick = { isOptionsSheetVisible = true }) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
                         contentDescription = "Options",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -203,6 +218,15 @@ fun PlayerScreen(
                     .aspectRatio(1f)
                     .shadow(elevation = 16.dp, shape = RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp))
+                    .scale(artScale)
+                    .clickable {
+                        scope.launch {
+                            artScale = 1.03f
+                            delay(90)
+                            artScale = 1f
+                            showLyrics = !showLyrics
+                        }
+                    }
                     .pointerInput(Unit) {
                         detectVerticalDragGestures { _, dragAmount ->
                             if (dragAmount > 100f) onClose()
@@ -237,7 +261,7 @@ fun PlayerScreen(
                     Text(
                         text = track.title,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
                         textAlign = TextAlign.Center,
                         overflow = TextOverflow.Ellipsis
@@ -246,7 +270,7 @@ fun PlayerScreen(
                     Text(
                         text = track.artistName,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         maxLines = 1,
                         textAlign = TextAlign.Center,
                         overflow = TextOverflow.Ellipsis
@@ -274,6 +298,7 @@ fun PlayerScreen(
                 )
                 val currentPhase = if (isPlaying) phase else 0f
 
+                val waveColor = MaterialTheme.colorScheme.onBackground
                 Canvas(modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
                     val midY = size.height / 2f
                     val activeWidth = size.width * fraction
@@ -283,10 +308,10 @@ fun PlayerScreen(
                     val amplitude = 4.dp.toPx()
                     val step = 2.dp.toPx()
                     val B = (2 * Math.PI / waveLength).toFloat()
-                    
+
                     val initialY = midY + amplitude * kotlin.math.sin(B * 0f - currentPhase)
                     path.moveTo(0f, initialY)
-                    
+
                     var currentX = 0f
                     while (currentX < activeWidth) {
                         currentX += step
@@ -297,12 +322,12 @@ fun PlayerScreen(
 
                     drawPath(
                         path = path,
-                        color = Color.White,
+                        color = waveColor,
                         style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
                     )
 
                     drawLine(
-                        color = Color.White.copy(alpha = 0.2f),
+                        color = waveColor.copy(alpha = 0.2f),
                         start = Offset(activeWidth, midY),
                         end = Offset(size.width, midY),
                         strokeWidth = 2.dp.toPx(),
@@ -328,11 +353,11 @@ fun PlayerScreen(
                             modifier = Modifier
                                 .size(12.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
+                                .background(MaterialTheme.colorScheme.onBackground)
                         )
                     },
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
+                        thumbColor = MaterialTheme.colorScheme.onBackground,
                         activeTrackColor = Color.Transparent,
                         inactiveTrackColor = Color.Transparent
                     ),
@@ -351,12 +376,12 @@ fun PlayerScreen(
                 Text(
                     text = formatTime(currentPositionSafe),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Text(
                     text = "-" + formatTime(duration - currentPositionSafe),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
             }
 
@@ -377,21 +402,21 @@ fun PlayerScreen(
                     Icon(
                         imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = "Like",
-                        tint = if (isLiked) Color.White else Color.White.copy(alpha = 0.6f),
+                        tint = if (isLiked) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                         modifier = Modifier.scale(likeScale)
                     )
                 }
                 IconButton(onClick = { performHaptic(HapticFeedbackConstants.CLOCK_TICK) }) {
-                    Icon(Icons.Rounded.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Rounded.SkipPrevious, contentDescription = "Previous", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(36.dp))
                 }
                 Box(
                     modifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape)
-                        .background(Color.White)
-                        .clickable { 
+                        .background(MaterialTheme.colorScheme.onBackground)
+                        .clickable {
                             performHaptic(HapticFeedbackConstants.CONFIRM)
-                            onPlayPauseClick() 
+                            onPlayPauseClick()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -405,22 +430,22 @@ fun PlayerScreen(
                         Icon(
                             imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = if (playing) "Pause" else "Play",
-                            tint = Color.Black,
+                            tint = MaterialTheme.colorScheme.background,
                             modifier = Modifier.size(32.dp)
                         )
                     }
                 }
                 IconButton(onClick = { performHaptic(HapticFeedbackConstants.CLOCK_TICK) }) {
-                    Icon(Icons.Rounded.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Rounded.SkipNext, contentDescription = "Next", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(36.dp))
                 }
-                IconButton(onClick = { 
+                IconButton(onClick = {
                     performHaptic(HapticFeedbackConstants.LONG_PRESS)
                     onRepeatToggle()
                 }) {
                     Icon(
-                        Icons.Rounded.Repeat, 
-                        contentDescription = "Repeat", 
-                        tint = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE) Color.White else Color.White.copy(alpha = 0.4f)
+                        Icons.Rounded.Repeat,
+                        contentDescription = "Repeat",
+                        tint = if (repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                     )
                 }
             }
@@ -428,6 +453,10 @@ fun PlayerScreen(
             
             Spacer(modifier = Modifier.weight(1.2f))
         }
+    }
+
+    BackHandler(enabled = showLyrics) {
+        showLyrics = false
     }
 
     if (isOptionsSheetVisible) {
@@ -453,7 +482,26 @@ fun PlayerScreen(
             onPlaylistSelected = { playlistId ->
                 onAddToPlaylist(playlistId, track)
                 isPlaylistSheetVisible = false
+            },
+            onCreateNewPlaylist = { name ->
+                onCreateNewPlaylist(name)
+                isPlaylistSheetVisible = false
             }
+        )
+    }
+
+    // Lyrics Overlay
+    if (showLyrics) {
+        LyricsOverlay(
+            track = track,
+            lyrics = lyrics,
+            isLyricsLoading = isLyricsLoading,
+            playbackPosition = playbackPosition,
+            duration = duration,
+            isPlaying = isPlaying,
+            onPlayPauseClick = onPlayPauseClick,
+            onSeekTo = onSeekTo,
+            onClose = { showLyrics = false }
         )
     }
 }
@@ -576,8 +624,12 @@ fun PlayerOptionsSheet(
 fun AddToPlaylistSheet(
     playlists: List<com.example.alphamusic.core.data.local.PlaylistEntity>,
     onDismiss: () -> Unit,
-    onPlaylistSelected: (String) -> Unit
+    onPlaylistSelected: (String) -> Unit,
+    onCreateNewPlaylist: (String) -> Unit
 ) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface
@@ -589,13 +641,13 @@ fun AddToPlaylistSheet(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
             )
-            
+
             SheetMenuItem(
                 icon = Icons.Rounded.Add,
                 label = "New Playlist",
-                onClick = { /* TODO */ }
+                onClick = { showCreateDialog = true }
             )
-            
+
             // Real Playlists
             if (playlists.isEmpty()) {
                 Text(
@@ -615,6 +667,37 @@ fun AddToPlaylistSheet(
                 }
             }
         }
+    }
+
+    if (showCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false; newPlaylistName = "" },
+            title = { Text("New Playlist") },
+            text = {
+                OutlinedTextField(
+                    value = newPlaylistName,
+                    onValueChange = { newPlaylistName = it },
+                    label = { Text("Playlist Name") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (newPlaylistName.isNotBlank()) {
+                        onCreateNewPlaylist(newPlaylistName)
+                        showCreateDialog = false
+                        newPlaylistName = ""
+                    }
+                }) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateDialog = false; newPlaylistName = "" }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -645,6 +728,240 @@ fun SheetMenuItem(
             containerColor = Color.Transparent
         )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LyricsOverlay(
+    track: Track,
+    lyrics: List<com.example.alphamusic.core.data.LyricLine>,
+    isLyricsLoading: Boolean,
+    playbackPosition: Long,
+    duration: Long,
+    isPlaying: Boolean,
+    onPlayPauseClick: () -> Unit,
+    onSeekTo: (Long) -> Unit,
+    onClose: () -> Unit
+) {
+    val artAlpha by animateFloatAsState(
+        targetValue = 0.7f,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = "artAlpha"
+    )
+
+    // Determine current line from timestamp
+    val currentLineIndex = remember(playbackPosition, lyrics) {
+        if (lyrics.isEmpty() || lyrics.firstOrNull()?.text == null) 0
+        else {
+            var best = 0
+            for (i in lyrics.indices) {
+                if (lyrics[i].timestampMs <= playbackPosition) best = i
+                else break
+            }
+            best
+        }
+    }
+
+    // LYRICS_BG_OVERLAY: semi-transparent scrim behind lyrics for readability.
+    // Remove this .background() line to disable the overlay.
+    val lyricsBgOverlay = Color.Black.copy(alpha = 0.25f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(lyricsBgOverlay)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { _, dragAmount ->
+                    if (dragAmount > 50f) onClose()
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .padding(horizontal = 24.dp)
+        ) {
+            Spacer(modifier = Modifier.weight(0.15f))
+
+            // Album art at reduced opacity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .aspectRatio(1f)
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onClose() }
+            ) {
+                AsyncImage(
+                    model = track.coverUrl,
+                    contentDescription = "Album Cover",
+                    contentScale = ContentScale.Crop,
+                    alpha = artAlpha,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Lyrics container
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when {
+                    isLyricsLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    lyrics.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No lyrics available",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+                    lyrics.firstOrNull()?.text != null && lyrics.first().timestampMs == 0L && lyrics.size == 1 -> {
+                        // Plain text lyrics (no timestamps) - just show the text
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = lyrics.first().text,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    else -> {
+                        // Synced lyrics
+                        val scrollState = rememberLazyListState(
+                            initialFirstVisibleItemIndex = (currentLineIndex - 2).coerceAtLeast(0)
+                        )
+
+                        LaunchedEffect(currentLineIndex) {
+                            scrollState.animateScrollToItem((currentLineIndex - 1).coerceAtLeast(0))
+                        }
+
+                        LazyColumn(
+                            state = scrollState,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(lyrics.size) { index ->
+                                val isCurrent = index == currentLineIndex
+                                val isPast = index < currentLineIndex
+                                val itemAlpha = when {
+                                    isCurrent -> 1f
+                                    isPast -> 0.45f
+                                    else -> 0.6f
+                                }
+                                val itemScale = if (isCurrent) 1.03f else 1f
+
+                                Text(
+                                    text = lyrics[index].text,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+                                    ),
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = itemAlpha),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .scale(itemScale)
+                                        .padding(vertical = 10.dp, horizontal = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Playback controls at bottom - compact
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Slider(
+                            value = if (duration > 0) playbackPosition.toFloat() else 0f,
+                            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                            onValueChange = { onSeekTo(it.toLong()) },
+                            thumb = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onBackground)
+                                )
+                            },
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.onBackground,
+                                activeTrackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                inactiveTrackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = formatTime(playbackPosition),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "-" + formatTime(duration - playbackPosition),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onPlayPauseClick) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private fun formatTime(timeMs: Long): String {

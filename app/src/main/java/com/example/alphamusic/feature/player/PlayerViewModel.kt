@@ -3,6 +3,8 @@ package com.example.alphamusic.feature.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alphamusic.core.data.DownloadState
+import com.example.alphamusic.core.data.LyricLine
+import com.example.alphamusic.core.data.LyricsSource
 import com.example.alphamusic.core.data.local.PlaylistEntity
 import com.example.alphamusic.core.domain.models.Track
 import com.example.alphamusic.core.player.MusicController
@@ -21,7 +23,8 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     private val musicController: MusicController,
     private val playbackStateManager: PlaybackStateManager,
-    private val repository: com.example.alphamusic.core.domain.MusicRepository
+    private val repository: com.example.alphamusic.core.domain.MusicRepository,
+    private val lyricsSource: LyricsSource
 ) : ViewModel() {
 
     val currentTrack: StateFlow<Track?> = playbackStateManager.currentTrack
@@ -37,8 +40,33 @@ class PlayerViewModel @Inject constructor(
     private val _downloadStates = MutableStateFlow<Map<String, DownloadState>>(emptyMap())
     val downloadStates: StateFlow<Map<String, DownloadState>> = _downloadStates.asStateFlow()
 
+    private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
+    val lyrics: StateFlow<List<LyricLine>> = _lyrics.asStateFlow()
+
+    private val _isLyricsLoading = MutableStateFlow(false)
+    val isLyricsLoading: StateFlow<Boolean> = _isLyricsLoading.asStateFlow()
+
     init {
         musicController.initialize()
+        observeTrackChanges()
+    }
+
+    private fun observeTrackChanges() {
+        viewModelScope.launch {
+            playbackStateManager.currentTrack.collect { track ->
+                track?.let { loadLyrics(it) }
+            }
+        }
+    }
+
+    private suspend fun loadLyrics(track: Track) {
+        _isLyricsLoading.value = true
+        _lyrics.value = emptyList()
+        val result = lyricsSource.fetchLyrics(track.artistName, track.title)
+        if (result != null) {
+            _lyrics.value = result
+        }
+        _isLyricsLoading.value = false
     }
 
     override fun onCleared() {
@@ -83,7 +111,7 @@ class PlayerViewModel @Inject constructor(
             repository.toggleLikeStatus(track, isLiked)
         }
     }
-    
+
     fun toggleDownloadStatus(track: Track, isDownloaded: Boolean) {
         viewModelScope.launch {
             repository.toggleDownloadStatus(track, isDownloaded)
@@ -100,10 +128,16 @@ class PlayerViewModel @Inject constructor(
             repository.toggleDownloadStatus(track, true)
         }
     }
-    
+
     fun addTrackToPlaylist(playlistId: String, track: Track) {
         viewModelScope.launch {
             repository.addTrackToPlaylist(playlistId, track)
+        }
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            repository.createPlaylist(name)
         }
     }
 }

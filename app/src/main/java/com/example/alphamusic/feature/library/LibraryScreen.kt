@@ -1,7 +1,9 @@
 package com.example.alphamusic.feature.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -14,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.*
@@ -88,6 +91,15 @@ class LibraryViewModel @Inject constructor(
             repository.addTrackToPlaylist(playlistId, track)
         }
     }
+
+    private val playlistTracksCache = mutableMapOf<String, StateFlow<List<Track>>>()
+
+    fun getTracksForPlaylist(playlistId: String): StateFlow<List<Track>> {
+        return playlistTracksCache.getOrPut(playlistId) {
+            repository.getTracksForPlaylist(playlistId)
+                .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -108,7 +120,24 @@ fun LibraryScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var selectedTrackForOptions by remember { mutableStateOf<Track?>(null) }
     var showAddToPlaylistForTrack by remember { mutableStateOf<Track?>(null) }
+    var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
 
+    BackHandler(enabled = selectedPlaylistId != null) {
+        selectedPlaylistId = null
+    }
+
+    val selectedPlaylist = selectedPlaylistId?.let { id -> playlists.find { it.id == id } }
+    if (selectedPlaylist != null) {
+        PlaylistDetailView(
+            playlist = selectedPlaylist,
+            viewModel = viewModel,
+            onTrackClick = onTrackClick,
+            onPlayNextClick = onPlayNextClick,
+            onBack = { selectedPlaylistId = null },
+            onTrackLongClick = { selectedTrackForOptions = it },
+            onTrackMoreClick = { selectedTrackForOptions = it }
+        )
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -148,7 +177,7 @@ fun LibraryScreen(
                 if (pagerState.currentPage < tabPositions.size) {
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                        color = Color.Transparent 
+                        color = Color.Transparent
                     )
                 }
             }
@@ -233,9 +262,13 @@ fun LibraryScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(playlists.size) { index ->
+                            items(playlists.size, key = { playlists[it].id }) { index ->
                                 val playlist = playlists[index]
-                                Column(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { selectedPlaylistId = playlist.id }
+                                ) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -291,6 +324,7 @@ fun LibraryScreen(
             }
         }
     }
+    }
 
     selectedTrackForOptions?.let { track ->
         SongOptionsSheet(
@@ -327,13 +361,15 @@ fun LibraryScreen(
             onPlaylistSelected = { playlistId ->
                 viewModel.addTrackToPlaylist(playlistId, trackToSave)
                 showAddToPlaylistForTrack = null
+            },
+            onCreateNewPlaylist = { name ->
+                viewModel.createPlaylist(name)
+                showAddToPlaylistForTrack = null
             }
         )
     }
 
     if (showCreatePlaylistDialog) {
-        // We'd actually want to let them type a name, but for now we'll just simulate it or we can add a basic AlertDialog with a TextField
-        // To keep it simple, we'll just dismiss it for now since we haven't built the text field, wait, let's build a quick text field
         var playlistName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCreatePlaylistDialog = false },
@@ -361,6 +397,78 @@ fun LibraryScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun PlaylistDetailView(
+    playlist: com.example.alphamusic.core.data.local.PlaylistEntity,
+    viewModel: LibraryViewModel,
+    onTrackClick: (Track) -> Unit,
+    onPlayNextClick: (Track) -> Unit,
+    onBack: () -> Unit,
+    onTrackLongClick: (Track) -> Unit,
+    onTrackMoreClick: (Track) -> Unit
+) {
+    val tracks by viewModel.getTracksForPlaylist(playlist.id).collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 24.dp, top = 8.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Text(
+                text = playlist.name,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        ScreenState(
+            isLoading = false,
+            error = null,
+            data = tracks,
+            onRetry = {},
+            loadingContent = { },
+            emptyContent = {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No tracks in this playlist yet.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        ) { trackList ->
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 24.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(trackList, key = { it.id }) { track ->
+                    TrackListItem(
+                        track = track,
+                        onClick = { onTrackClick(track) },
+                        onLongClick = { onTrackLongClick(track) },
+                        onMoreClick = { onTrackMoreClick(track) }
+                    )
+                }
+            }
+        }
     }
 }
 

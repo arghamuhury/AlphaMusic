@@ -3,6 +3,7 @@ package com.example.alphamusic.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.alphamusic.core.data.AppSettings
+import com.example.alphamusic.core.data.ThemeMode
 import com.example.alphamusic.core.domain.MusicRepository
 import com.example.alphamusic.core.player.SleepTimerManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +27,8 @@ class SettingsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 highQualityAudio = appSettings.highQualityAudio,
-                downloadWifiOnly = appSettings.downloadWifiOnly
+                downloadWifiOnly = appSettings.downloadWifiOnly,
+                themeMode = appSettings.themeMode
             )
         }
         refreshStorageInfo()
@@ -40,6 +42,11 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadWifiOnly(enabled: Boolean) {
         appSettings.downloadWifiOnly = enabled
         _uiState.update { it.copy(downloadWifiOnly = enabled) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        appSettings.themeMode = mode
+        _uiState.update { it.copy(themeMode = mode) }
     }
 
     fun startSleepTimer() {
@@ -93,6 +100,7 @@ class SettingsViewModel @Inject constructor(
 data class SettingsUiState(
     val highQualityAudio: Boolean = true,
     val downloadWifiOnly: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val cacheSizeLabel: String = "0 bytes",
     val downloadsSizeLabel: String = "0 bytes"
 )

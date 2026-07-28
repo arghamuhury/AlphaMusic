@@ -16,6 +16,10 @@ val SFProFontFamily = FontFamily(
     Font(R.font.sf_pro_display_black, weight = FontWeight.ExtraBold)
 )
 
+val ButlerFontFamily = FontFamily(
+    Font(R.font.butler_free_bd_st, weight = FontWeight.Bold)
+)
+
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = SFProFontFamily,
@@ -29,6 +33,13 @@ val Typography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = SFProFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
         letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(

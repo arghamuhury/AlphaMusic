@@ -139,8 +139,9 @@ class AlphaMediaSessionService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        if (player?.playWhenReady == true) {
-            player.pause()
+        if (player?.playWhenReady == true || player?.isPlaying == true) {
+            player?.pause()
+            player?.stop()
         }
         stopSelf()
     }

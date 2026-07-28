@@ -101,6 +101,12 @@ class HomeViewModel @Inject constructor(
         }
     }
     
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            repository.createPlaylist(name)
+        }
+    }
+
     fun addTrackToPlaylist(playlistId: String, track: Track) {
         viewModelScope.launch {
             repository.addTrackToPlaylist(playlistId, track)
@@ -195,9 +201,14 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text(
+                            text = "Discover",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 imageVector = Icons.Rounded.Settings,
@@ -206,7 +217,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp)) // Reduced spacer to slightly uplift the content
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 item {
@@ -366,6 +377,10 @@ fun HomeScreen(
                 onDismiss = { trackToAdd = null },
                 onPlaylistSelected = { playlistId ->
                     viewModel.addTrackToPlaylist(playlistId, trackToSave)
+                    trackToAdd = null
+                },
+                onCreateNewPlaylist = { name ->
+                    viewModel.createPlaylist(name)
                     trackToAdd = null
                 }
             )

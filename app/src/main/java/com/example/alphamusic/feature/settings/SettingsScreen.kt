@@ -4,16 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Brightness6
+import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.Brightness2
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.alphamusic.core.data.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +62,30 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             item {
+                SettingsCategory("Appearance")
+                Spacer(modifier = Modifier.height(8.dp))
+                ThemeOption(
+                    label = ThemeMode.SYSTEM.label,
+                    icon = Icons.Rounded.Brightness6,
+                    selected = uiState.themeMode == ThemeMode.SYSTEM,
+                    onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) }
+                )
+                ThemeOption(
+                    label = ThemeMode.DARK.label,
+                    icon = Icons.Rounded.Brightness2,
+                    selected = uiState.themeMode == ThemeMode.DARK,
+                    onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
+                )
+                ThemeOption(
+                    label = ThemeMode.LIGHT.label,
+                    icon = Icons.Rounded.BrightnessHigh,
+                    selected = uiState.themeMode == ThemeMode.LIGHT,
+                    onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
                 SettingsCategory("Playback")
                 SettingsSwitch(
                     title = "High Quality Audio",
@@ -126,6 +157,53 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(20.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
             }
         }
     }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -68,6 +69,11 @@ fun MainScreen(
     val playlists by playerViewModel.playlists.collectAsState()
 
     var isPlayerExpanded by remember { mutableStateOf(false) }
+    var isSettingsOpen by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isSettingsOpen) {
+        isSettingsOpen = false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -85,7 +91,7 @@ fun MainScreen(
                         )
                     }
                     NavigationBar(
-                        containerColor = Color.Black,
+                        containerColor = MaterialTheme.colorScheme.background,
                         contentColor = MaterialTheme.colorScheme.onBackground,
                         tonalElevation = 0.dp
                     ) {
@@ -160,7 +166,7 @@ fun MainScreen(
                     HomeScreen(
                         onTrackClick = { playerViewModel.playTrack(it) },
                         onPlayNextClick = { playerViewModel.playNext(it) },
-                        onSettingsClick = { navController.navigate(Screen.Settings) }
+                        onSettingsClick = { isSettingsOpen = true }
                     )
                 }
                 composable<Screen.Search> {
@@ -174,9 +180,6 @@ fun MainScreen(
                         onTrackClick = { playerViewModel.playTrack(it) },
                         onPlayNextClick = { playerViewModel.playNext(it) }
                     )
-                }
-                composable<Screen.Settings> {
-                    SettingsScreen(onNavigateBack = { navController.navigateUp() })
                 }
             }
         }
@@ -211,12 +214,25 @@ fun MainScreen(
                     }
                 },
                 onAddToPlaylist = { playlistId, track -> playerViewModel.addTrackToPlaylist(playlistId, track) },
+                onCreateNewPlaylist = { name -> playerViewModel.createPlaylist(name) },
                 isLiked = currentTrack?.let { track -> likedTracks.any { it.id == track.id } } ?: false,
                 isDownloaded = currentTrack?.let { track -> downloadedTracks.any { it.id == track.id } } ?: false,
                 downloadStates = downloadStates,
                 playlists = playlists,
+                lyrics = playerViewModel.lyrics.collectAsState().value,
+                isLyricsLoading = playerViewModel.isLyricsLoading.collectAsState().value,
                 onClose = { isPlayerExpanded = false }
             )
+        }
+
+        // Settings Overlay
+        AnimatedVisibility(
+            visible = isSettingsOpen,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            SettingsScreen(onNavigateBack = { isSettingsOpen = false })
         }
     }
 }

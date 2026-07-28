@@ -3,6 +3,7 @@ package com.example.alphamusic.core.ui.theme
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -55,7 +56,7 @@ fun rememberDominantColor(imageUrl: String?, defaultColor: Color = White): State
     return dominantColor
 }
 
-private val MonochromeColorScheme = darkColorScheme(
+private val DarkColorScheme = darkColorScheme(
     primary = White,
     onPrimary = Black,
     primaryContainer = SurfaceDark,
@@ -79,38 +80,89 @@ private val MonochromeColorScheme = darkColorScheme(
     onErrorContainer = White
 )
 
+private val LightColorScheme = lightColorScheme(
+    primary = WarmPrimary,
+    onPrimary = WarmOnPrimary,
+    primaryContainer = WarmPrimaryContainer,
+    onPrimaryContainer = WarmOnPrimaryContainer,
+    secondary = WarmTextSecondary,
+    onSecondary = WarmOnPrimary,
+    secondaryContainer = WarmPrimaryContainer,
+    onSecondaryContainer = WarmOnBackground,
+    tertiary = WarmPrimary,
+    onTertiary = WarmOnPrimary,
+    background = CreamBackground,
+    onBackground = WarmOnBackground,
+    surface = SurfaceLight,
+    onSurface = WarmOnBackground,
+    surfaceVariant = WarmPrimaryContainer,
+    onSurfaceVariant = WarmTextSecondary,
+    outline = WarmDivider,
+    error = Color(0xFFD32F2F),
+    onError = WarmOnPrimary,
+    errorContainer = Color(0xFFFFEBEE),
+    onErrorContainer = Color(0xFF4A0000)
+)
+
 @Composable
 fun AlphaMusicTheme(
+    isDarkTheme: Boolean = true,
     dominantColor: Color? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = remember(dominantColor) {
+    val colorScheme = remember(dominantColor, isDarkTheme) {
         if (dominantColor != null && dominantColor != White) {
-            darkColorScheme(
-                primary = dominantColor,
-                onPrimary = Black,
-                primaryContainer = SurfaceDark,
-                onPrimaryContainer = dominantColor,
-                secondary = dominantColor.copy(alpha = 0.7f),
-                onSecondary = Black,
-                secondaryContainer = SurfaceDark,
-                onSecondaryContainer = dominantColor,
-                tertiary = dominantColor,
-                onTertiary = Black,
-                background = Black,
-                onBackground = White,
-                surface = SurfaceDark,
-                onSurface = White,
-                surfaceVariant = SurfaceDark,
-                onSurfaceVariant = TextSecondary,
-                outline = DividerColor,
-                error = White,
-                onError = Black,
-                errorContainer = SurfaceDark,
-                onErrorContainer = White
-            )
+            if (isDarkTheme) {
+                darkColorScheme(
+                    primary = dominantColor,
+                    onPrimary = Black,
+                    primaryContainer = SurfaceDark,
+                    onPrimaryContainer = dominantColor,
+                    secondary = dominantColor.copy(alpha = 0.7f),
+                    onSecondary = Black,
+                    secondaryContainer = SurfaceDark,
+                    onSecondaryContainer = dominantColor,
+                    tertiary = dominantColor,
+                    onTertiary = Black,
+                    background = Black,
+                    onBackground = White,
+                    surface = SurfaceDark,
+                    onSurface = White,
+                    surfaceVariant = SurfaceDark,
+                    onSurfaceVariant = TextSecondary,
+                    outline = DividerColor,
+                    error = White,
+                    onError = Black,
+                    errorContainer = SurfaceDark,
+                    onErrorContainer = White
+                )
+            } else {
+                lightColorScheme(
+                    primary = dominantColor,
+                    onPrimary = WarmOnPrimary,
+                    primaryContainer = WarmPrimaryContainer,
+                    onPrimaryContainer = dominantColor,
+                    secondary = dominantColor.copy(alpha = 0.7f),
+                    onSecondary = WarmOnPrimary,
+                    secondaryContainer = WarmPrimaryContainer,
+                    onSecondaryContainer = dominantColor,
+                    tertiary = dominantColor,
+                    onTertiary = WarmOnPrimary,
+                    background = CreamBackground,
+                    onBackground = WarmOnBackground,
+                    surface = SurfaceLight,
+                    onSurface = WarmOnBackground,
+                    surfaceVariant = WarmPrimaryContainer,
+                    onSurfaceVariant = WarmTextSecondary,
+                    outline = WarmDivider,
+                    error = Color(0xFFD32F2F),
+                    onError = WarmOnPrimary,
+                    errorContainer = Color(0xFFFFEBEE),
+                    onErrorContainer = Color(0xFF4A0000)
+                )
+            }
         } else {
-            MonochromeColorScheme
+            if (isDarkTheme) DarkColorScheme else LightColorScheme
         }
     }
 
@@ -118,10 +170,10 @@ fun AlphaMusicTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = Black.toArgb()
-            window.navigationBarColor = Black.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
+            window.statusBarColor = if (isDarkTheme) Black.toArgb() else CreamBackground.toArgb()
+            window.navigationBarColor = if (isDarkTheme) Black.toArgb() else CreamBackground.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDarkTheme
         }
     }
 

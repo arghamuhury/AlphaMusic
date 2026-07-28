@@ -373,6 +373,10 @@ fun SearchScreen(
             onPlaylistSelected = { playlistId ->
                 viewModel.addTrackToPlaylist(playlistId, trackToSave)
                 showAddToPlaylistForTrack = null
+            },
+            onCreateNewPlaylist = { name ->
+                viewModel.createPlaylist(name)
+                showAddToPlaylistForTrack = null
             }
         )
     }

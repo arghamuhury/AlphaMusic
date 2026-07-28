@@ -24,7 +24,6 @@ AlphaMusic offers a comprehensive suite of features designed for music lovers:
 ### Design and Theming
 *   **Material 3:** Built on Google's latest design system for a clean, modern look.
 *   **Immersive Dark Mode:** An always-on dark theme that is easy on the eyes.
-*   **Premium Typography:** Uses the SF Pro font family for crisp, Apple-inspired text rendering.
 *   **Dynamic Theming:** The player screen dynamically extracts the dominant color from album art to create a personalized, themed background.
 
 ### Performance
@@ -82,7 +81,7 @@ To build the app from source, you will need Android Studio and the Android SDK.
 | **Media Playback** | ExoPlayer (Media3) |
 | **Networking** | Retrofit & OkHttp |
 | **Image Loading** | Coil |
-| **Theming** | Dynamic dark theme, SF Pro typography |
+| **Theming** | Dynamic dark theme |
 
 ---
 
